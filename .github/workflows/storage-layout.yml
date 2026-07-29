@@ -35,4 +35,7 @@ jobs:
         FOUNDRY_DISABLE_NIGHTLY_WARNING: true
 
     - name: Run Upgradeability Storage Tests
-      run: npx hardhat test test/upgradeability/Storage.test.ts
+      run: npx hardhat test test/upgradeability/Storage.test.js
+
+
+

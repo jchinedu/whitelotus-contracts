@@ -1,9 +1,9 @@
-import { HardhatUserConfig } from "hardhat/config";
 import hhEthers from "@nomicfoundation/hardhat-ethers";
 import hhUpgrades from "@openzeppelin/hardhat-upgrades";
 import hhFoundry from "@nomicfoundation/hardhat-foundry";
+import hhMocha from "@nomicfoundation/hardhat-mocha";
 
-const config: HardhatUserConfig = {
+const config = {
   solidity: "0.8.24",
   paths: {
     sources: "./contracts",
@@ -12,7 +12,8 @@ const config: HardhatUserConfig = {
   plugins: [
     hhEthers,
     hhUpgrades,
-    hhFoundry
+    hhFoundry,
+    hhMocha
   ]
 };
 

@@ -1,5 +1,7 @@
-import { ethers, upgrades } from "hardhat";
+import hardhat from "hardhat";
 import { expect } from "chai";
+
+const { ethers, upgrades } = hardhat;
 
 describe("Storage Collision Upgrades", function () {
   it("should validate BaseLogic upgradeability without storage collisions (Correct Gap Adjustment)", async function () {
@@ -18,4 +20,3 @@ describe("Storage Collision Upgrades", function () {
     await expect(upgrades.validateUpgrade(V1, V2_Bad)).to.be.rejectedWith(/New storage layout is incompatible/);
   });
 });
-
