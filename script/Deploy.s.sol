@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
 import {GrantRoundFactory} from "../contracts/GrantRoundFactory.sol";
+import {StakingLogic} from "../contracts/core/StakingLogic.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {MinimalForwarder} from "../contracts/MinimalForwarder.sol";
 
 /// @title Deploy - Unified deployment script for the WhiteLotus grant stack
 /// @notice Deploys GrantRoundFactory and optionally creates initial grant rounds.
@@ -23,11 +26,21 @@ contract Deploy is Script {
         console.log("Admin    :", admin);
         console.log("");
 
-        // ── 1. Deploy GrantRoundFactory ──────────────────────────────
         vm.startBroadcast(deployerKey);
 
-        GrantRoundFactory factory = new GrantRoundFactory();
-        console.log("[1/2] GrantRoundFactory deployed at:", address(factory));
+        // ── 1a. Deploy MinimalForwarder (or use existing) ────────────
+        address forwarderAddr = vm.envOr("TRUSTED_FORWARDER", address(0));
+        if (forwarderAddr == address(0)) {
+            MinimalForwarder forwarder = new MinimalForwarder();
+            forwarderAddr = address(forwarder);
+            console.log("[1/3] MinimalForwarder deployed at:", forwarderAddr);
+        } else {
+            console.log("[1/3] Using existing forwarder   at:", forwarderAddr);
+        }
+
+        // ── 1b. Deploy GrantRoundFactory ──────────────────────────────
+        GrantRoundFactory factory = new GrantRoundFactory(forwarderAddr);
+        console.log("[2/3] GrantRoundFactory deployed at:", address(factory));
 
         // ── 2. Create initial round (if configured) ──────────────────
         string memory roundTitle = vm.envOr("INIT_ROUND_TITLE", string(""));
@@ -44,15 +57,27 @@ contract Deploy is Script {
                 roundAddr = factory.createRound(roundTitle, metaURI, budget, admin);
             }
 
-            console.log("[2/2] Initial GrantRound deployed at:", roundAddr);
+            console.log("[3/3] Initial GrantRound deployed at:", roundAddr);
             console.log("       Title  :", roundTitle);
             console.log("       Budget :", budget);
             if (fundingWei > 0) {
                 console.log("       Funding:", fundingWei);
             }
         } else {
-            console.log("[2/2] No initial round configured (set INIT_ROUND_TITLE to create one)");
+            console.log("[3/3] No initial round configured (set INIT_ROUND_TITLE to create one)");
         }
+
+        // ── 3. Deploy UUPS StakingLogic Proxy ────────────────────────
+        StakingLogic stakingImpl = new StakingLogic();
+        bytes memory initData = abi.encodeWithSelector(
+            StakingLogic.initialize.selector,
+            admin
+        );
+        ERC1967Proxy stakingProxy = new ERC1967Proxy(
+            address(stakingImpl),
+            initData
+        );
+        console.log("[3/3] StakingLogic Proxy deployed at:", address(stakingProxy));
 
         vm.stopBroadcast();
 
@@ -61,5 +86,7 @@ contract Deploy is Script {
         console.log("=== Deployment Complete ===");
         console.log("GrantRoundFactory:", address(factory));
         console.log("Total rounds     :", factory.roundsCount());
+        console.log("StakingLogic Proxy:", address(stakingProxy));
     }
 }
+
